@@ -22,15 +22,17 @@ type DBService struct {
 }
 
 var (
-	host = os.Getenv("BLUEPRINT_DB_HOST")
-	port = os.Getenv("BLUEPRINT_DB_PORT")
+	username = os.Getenv("BLUEPRINT_DB_USERNAME")
+	password = os.Getenv("BLUEPRINT_DB_ROOT_PASSWORD")
+	host     = os.Getenv("BLUEPRINT_DB_HOST")
+	port     = os.Getenv("BLUEPRINT_DB_PORT")
 )
 
 func NewDBService() *DBService {
 	slog.Info(LogHelper.LogServiceStarted("Database"))
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	uri := fmt.Sprintf("mongodb://%s:%s", host, port)
+	uri := fmt.Sprintf("mongodb://%s:%s@%s:%s", username, password, host, port)
 	slog.Info(LogColor.Yellow("Connecting to MongoDB url:" + uri))
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
 	if err != nil {
