@@ -1,9 +1,12 @@
 package server
 
 import (
+	"HostelApp/LogColor"
+	"HostelApp/internal"
 	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -12,7 +15,7 @@ import (
 	"github.com/gofiber/contrib/websocket"
 )
 
-func (s *FiberServer) RegisterFiberRoutes() {
+func (s *FiberServer) registerDefaultFiberRoutes() {
 	// Apply CORS middleware
 	s.App.Use(cors.New(cors.Config{
 		AllowOrigins:     "*",
@@ -30,9 +33,17 @@ func (s *FiberServer) RegisterFiberRoutes() {
 
 }
 
+func (s *FiberServer) RegisterFiberRoutes(apiService internal.IAPIService) {
+	apiRoute := apiService.GetFiberRoutes()
+	for _, route := range *apiRoute {
+		slog.Info(LogColor.Pink(route.Path))
+		s.App.Get(route.Path, route.Handler)
+	}
+}
+
 func (s *FiberServer) HelloWorldHandler(c *fiber.Ctx) error {
 	resp := fiber.Map{
-		"message": "Hello World",
+		"message": "Hello everyone hostel server is live",
 	}
 
 	return c.JSON(resp)

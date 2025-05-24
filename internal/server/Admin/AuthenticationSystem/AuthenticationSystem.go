@@ -1,29 +1,30 @@
-package Admin
+package AuthenticationSystem
 
 import (
+	"HostelApp/internal"
+	"HostelApp/internal/JWTManager"
 	AdminDB "HostelApp/internal/database/Admin"
-	"HostelApp/internal/server"
 	"HostelApp/internal/storageData/Admin"
 	"github.com/gofiber/fiber/v2"
 )
 
 type AuthenticationManager struct {
-	app        *fiber.App
 	dbmanager  *AdminDB.LoginDBManager
-	jwtmanager *server.JWTManager
+	jwtmanager *JWTManager.JWTManager
 }
 
-func NewAuthenticationManager(app *fiber.App, dbManager *AdminDB.LoginDBManager, jwtManager *server.JWTManager) *AuthenticationManager {
+func (m *AuthenticationManager) GetFiberRoutes() *[]internal.APIRoute {
+	return &[]internal.APIRoute{
+		{"/admin/login", m.Login},
+	}
+}
+
+func NewAuthenticationManager(dbManager *AdminDB.LoginDBManager, jwtManager *JWTManager.JWTManager) *AuthenticationManager {
 	instance := &AuthenticationManager{
-		app:        app,
 		dbmanager:  dbManager,
 		jwtmanager: jwtManager,
 	}
 	return instance
-}
-
-func (m *AuthenticationManager) Init() {
-	m.app.Post("/admin/login", m.Login)
 }
 
 func (s *AuthenticationManager) Login(c *fiber.Ctx) error {

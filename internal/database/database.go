@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"os"
 	"time"
 
@@ -15,13 +16,9 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-type Service interface {
-	Health() map[string]string
-}
-
-type service struct {
-	db    *mongo.Client
-	admin *Admin.DbManager
+type DBService struct {
+	db      *mongo.Client
+	AdminDB *Admin.DbManager
 }
 
 var (
@@ -29,10 +26,13 @@ var (
 	port = os.Getenv("BLUEPRINT_DB_PORT")
 )
 
-func New() Service {
+func NewDBService() *DBService {
+	slog.Info(LogHelper.LogServiceStarted("Database"))
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(fmt.Sprintf("mongodb://%s:%s", host, port)))
+	uri := fmt.Sprintf("mongodb://%s:%s", host, port)
+	slog.Info(LogColor.Yellow("Connecting to MongoDB url:" + uri))
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
 	if err != nil {
 		log.Panicf(LogHelper.LogPanic("fail to connect to mongo" + err.Error()))
 	}
@@ -40,13 +40,14 @@ func New() Service {
 		log.Panicf(LogColor.Red("!!Panic!! fail to ping MongoDB error: " + errPing.Error()))
 		return nil
 	}
-	return &service{
-		db:    client,
-		admin: Admin.NewService(client),
+	slog.Info(LogHelper.LogServiceStarted("Database"))
+	return &DBService{
+		db:      client,
+		AdminDB: Admin.NewService(client),
 	}
 }
 
-func (s *service) Health() map[string]string {
+func (s *DBService) Health() map[string]string {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 
