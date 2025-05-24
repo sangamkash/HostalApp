@@ -1,0 +1,9 @@
+# App Configuration change the file name to .env 
+APP_ENV=development
+PORT=3000
+
+# MongoDB Configuration
+BLUEPRINT_DB_HOST=mongo_bp
+BLUEPRINT_DB_PORT=27017
+BLUEPRINT_DB_USERNAME=dev_user
+BLUEPRINT_DB_ROOT_PASSWORD=dev_password
