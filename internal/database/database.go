@@ -1,6 +1,9 @@
 package database
 
 import (
+	"HostelApp/LogColor"
+	"HostelApp/LogHelper"
+	"HostelApp/internal/database/Admin"
 	"context"
 	"fmt"
 	"log"
@@ -17,24 +20,29 @@ type Service interface {
 }
 
 type service struct {
-	db *mongo.Client
+	db    *mongo.Client
+	admin *Admin.DbManager
 }
 
 var (
 	host = os.Getenv("BLUEPRINT_DB_HOST")
 	port = os.Getenv("BLUEPRINT_DB_PORT")
-	//database = os.Getenv("BLUEPRINT_DB_DATABASE")
 )
 
 func New() Service {
-	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(fmt.Sprintf("mongodb://%s:%s", host, port)))
-
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(fmt.Sprintf("mongodb://%s:%s", host, port)))
 	if err != nil {
-		log.Fatal(err)
-
+		log.Panicf(LogHelper.LogPanic("fail to connect to mongo" + err.Error()))
+	}
+	if errPing := client.Ping(ctx, nil); errPing != nil {
+		log.Panicf(LogColor.Red("!!Panic!! fail to ping MongoDB error: " + errPing.Error()))
+		return nil
 	}
 	return &service{
-		db: client,
+		db:    client,
+		admin: Admin.NewService(client),
 	}
 }
 

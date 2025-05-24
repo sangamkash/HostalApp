@@ -1,4 +1,4 @@
-# App Configuration change the file name to .env 
+# App Configuration change the file name to .env
 APP_ENV=development
 PORT=3000
 
