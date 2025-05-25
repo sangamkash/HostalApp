@@ -3,7 +3,6 @@ package JWTManager
 import (
 	"fmt"
 	"github.com/golang-jwt/jwt/v5"
-	"net/http"
 	"strings"
 	"time"
 )
@@ -50,6 +49,7 @@ func (m *JWTManager) ParseToken(tokenString string) (jwt.MapClaims, error) {
 	return nil, err
 }
 
+// VerifyToken return isExpired,claims,error
 func (m *JWTManager) VerifyToken(tokenString string) (jwt.MapClaims, error) {
 	token, err := jwt.ParseWithClaims(tokenString, jwt.MapClaims{}, func(token *jwt.Token) (interface{}, error) {
 		return m.signingKey, nil
@@ -87,23 +87,40 @@ func (m *JWTManager) RefreshToken(tokenString string) (string, error) {
 	return m.GenerateToken(userData)
 }
 
-func (m *JWTManager) IsValid(r *http.Request) (bool, jwt.Claims, error) {
-	authHeader := r.Header.Get("Authorization")
+//func (m *JWTManager) IsValid(r *http.Request) (bool, jwt.Claims, error) {
+//	authHeader := r.Header.Get("Authorization")
+//	if authHeader == "" {
+//		return false, nil, fmt.Errorf("Missing Authorization header")
+//	}
+//	// Expecting "Bearer <token>"
+//	parts := strings.Split(authHeader, " ")
+//	if len(parts) != 2 || parts[0] != "Bearer" {
+//		return false, nil, fmt.Errorf("Invalid Authorization header")
+//	}
+//	tokenStr := parts[1]
+//
+//	// Validate JWT
+//	claims, err := m.VerifyToken(tokenStr)
+//	if err != nil {
+//		return false, nil, err
+//	}
+//
+//	return true, claims, nil
+//}
+
+// IsValid this return isExpired ,claims
+func (m *JWTManager) IsValid(authHeader string) (jwt.MapClaims, error) {
 	if authHeader == "" {
-		return false, nil, fmt.Errorf("Missing Authorization header")
+		return nil, fmt.Errorf("invalid Authorization header")
 	}
-	// Expecting "Bearer <token>"
 	parts := strings.Split(authHeader, " ")
 	if len(parts) != 2 || parts[0] != "Bearer" {
-		return false, nil, fmt.Errorf("Invalid Authorization header")
+		return nil, fmt.Errorf("invalid Authorization header")
 	}
 	tokenStr := parts[1]
-
-	// Validate JWT
 	claims, err := m.VerifyToken(tokenStr)
 	if err != nil {
-		return false, nil, err
+		return nil, err
 	}
-
-	return true, claims, nil
+	return claims, nil
 }

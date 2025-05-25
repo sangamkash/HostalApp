@@ -15,7 +15,8 @@ type AuthenticationManager struct {
 
 func (m *AuthenticationManager) GetFiberRoutes() *[]internal.APIRoute {
 	return &[]internal.APIRoute{
-		{"/admin/login", m.Login},
+		{"/admin/login", m.login},
+		{"/admin/createUser", m.createUser},
 	}
 }
 
@@ -27,7 +28,7 @@ func NewAuthenticationManager(dbManager *AdminDB.LoginDBManager, jwtManager *JWT
 	return instance
 }
 
-func (s *AuthenticationManager) Login(c *fiber.Ctx) error {
+func (s *AuthenticationManager) login(c *fiber.Ctx) error {
 	var user Admin.AdminLogin
 	if err := c.BodyParser(&user); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -54,4 +55,29 @@ func (s *AuthenticationManager) Login(c *fiber.Ctx) error {
 		}
 		return c.JSON(resp)
 	}
+}
+func (s *AuthenticationManager) createUser(c *fiber.Ctx) error {
+	var user Admin.AdminUserDetail
+	authHeader := c.Get("Authorization")
+	if _, jwtErr := s.jwtmanager.IsValid(authHeader); jwtErr != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": jwtErr.Error(),
+		})
+	}
+	if err := c.BodyParser(&user); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "cannot parse JSON",
+		})
+	}
+	if err := s.dbmanager.UserCreate(&user, c.Context()); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	resp := fiber.Map{
+		"message": "user create",
+	}
+	return c.JSON(resp)
+
 }
