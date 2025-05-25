@@ -33,7 +33,7 @@ func NewDBService() *DBService {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	uri := fmt.Sprintf("mongodb://%s:%s@%s:%s", username, password, host, port)
-	slog.Info(LogColor.Yellow("Connecting to MongoDB url:" + uri))
+	slog.Info(LogColor.Yellow("Connecting to MongoDB url:" + uri + "\n"))
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
 	if err != nil {
 		log.Panicf(LogHelper.LogPanic("fail to connect to mongo" + err.Error()))

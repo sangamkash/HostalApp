@@ -29,7 +29,7 @@ func NewAuthenticationManager(dbManager *AdminDB.LoginDBManager, jwtManager *JWT
 
 func (s *AuthenticationManager) Login(c *fiber.Ctx) error {
 	var user Admin.AdminLogin
-	if err := c.BodyParser(user); err != nil {
+	if err := c.BodyParser(&user); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "cannot parse JSON",
 		})

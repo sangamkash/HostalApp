@@ -33,7 +33,7 @@ services:
       - blueprint
   mongo_bp:
     image: mongo:latest
-    restart: unless-stopped
+    #restart: unless-stopped
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${BLUEPRINT_DB_USERNAME}
       MONGO_INITDB_ROOT_PASSWORD: ${BLUEPRINT_DB_ROOT_PASSWORD}
