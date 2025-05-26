@@ -36,8 +36,37 @@ func (s *FiberServer) registerDefaultFiberRoutes() {
 func (s *FiberServer) RegisterFiberRoutes(apiService internal.IAPIService) {
 	apiRoute := apiService.GetFiberRoutes()
 	for _, route := range *apiRoute {
-		slog.Info(LogColor.Pink(route.Path))
-		s.App.Get(route.Path, route.Handler)
+		slog.Info(LogColor.Orange(route.Method.String()) + ":" + LogColor.Pink(route.Path))
+		switch route.Method {
+		case internal.GET:
+			s.App.Get(route.Path, route.Handler)
+			break
+		case internal.POST:
+			s.App.Post(route.Path, route.Handler)
+			break
+		case internal.PUT:
+			s.App.Put(route.Path, route.Handler)
+			break
+		case internal.PATCH:
+			s.App.Patch(route.Path, route.Handler)
+			break
+		case internal.DELETE:
+			s.App.Delete(route.Path)
+			break
+		case internal.HEAD:
+			s.App.Head(route.Path, route.Handler)
+			break
+		case internal.OPTIONS:
+			s.App.Options(route.Path, route.Handler)
+			break
+		case internal.TRACE:
+			s.App.Trace(route.Path, route.Handler)
+			break
+		case internal.CONNECT:
+			s.App.Connect(route.Path, route.Handler)
+			break
+
+		}
 	}
 }
 

@@ -16,9 +16,9 @@ type AuthenticationManager struct {
 
 func (m *AuthenticationManager) GetFiberRoutes() *[]internal.APIRoute {
 	return &[]internal.APIRoute{
-		{"/admin/login", m.login},
-		{"/admin/createUser", m.createUser},
-		{"/admin/logout", m.logout},
+		{"/admin/login", internal.POST, m.login},
+		{"/admin/createUser", internal.POST, m.createUser},
+		{"/admin/logout", internal.POST, m.logout},
 	}
 }
 
@@ -76,7 +76,7 @@ func (s *AuthenticationManager) login(c *fiber.Ctx) error {
 		}
 		return c.Status(fiber.StatusInternalServerError).JSON(resp)
 	}
-	
+
 	//generating new JWT token
 	if token, jwtErr := s.jwtManager.GenerateToken(*_id); jwtErr != nil {
 		resp := fiber.Map{
