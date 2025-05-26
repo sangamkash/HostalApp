@@ -3,6 +3,7 @@ package AuthenticationSystem
 import (
 	"HostelApp/internal"
 	"HostelApp/internal/JWTManager"
+	"HostelApp/internal/ValidatorSystem"
 	AdminDB "HostelApp/internal/database/Admin"
 	"HostelApp/internal/storageData/Admin"
 	"github.com/gofiber/fiber/v2"
@@ -35,16 +36,17 @@ func (s *AuthenticationManager) login(c *fiber.Ctx) error {
 			"error": "cannot parse JSON",
 		})
 	}
+
 	if err := s.dbmanager.IsValidCredentials(&user, c.Context()); err != nil {
 		resp := fiber.Map{
-			"message": "failed to validate credentials",
+			"message": "failed to validate credentials in DB",
 			"error":   err.Error(),
 		}
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
 	}
 	if token, err := s.jwtmanager.GenerateToken(""); err != nil {
 		resp := fiber.Map{
-			"message": "failed to validate credentials",
+			"message": "failed to generate JWT",
 			"error":   err.Error(),
 		}
 		return c.Status(fiber.StatusInternalServerError).JSON(resp)
@@ -61,9 +63,18 @@ func (s *AuthenticationManager) createUser(c *fiber.Ctx) error {
 	authHeader := c.Get("Authorization")
 	if _, jwtErr := s.jwtmanager.IsValid(authHeader); jwtErr != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"error": jwtErr.Error(),
+			"message": "failed to validate credentials at jwt",
+			"error":   jwtErr.Error(),
 		})
 	}
+	if err := ValidatorSystem.GetValidator().IsValid(&user); err != nil {
+		resp := fiber.Map{
+			"message": "failed to validate credentials at validator",
+			"error":   err.Error(),
+		}
+		return c.Status(fiber.StatusBadRequest).JSON(resp)
+	}
+
 	if err := c.BodyParser(&user); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "cannot parse JSON",

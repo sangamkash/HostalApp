@@ -23,3 +23,7 @@ func LogServiceFailToStarted(s string) string {
 func LogPanic(s string) string {
 	return colorRed + "=====!!!!!Panic ::" + s + " :: Panic!!!!!======" + colorReset
 }
+
+func LogValidator(s string) string {
+	return colorYellow + "Validator::" + s + colorReset
+}
