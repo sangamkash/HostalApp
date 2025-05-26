@@ -17,7 +17,7 @@ type AuthenticationManager struct {
 func (m *AuthenticationManager) GetFiberRoutes() *[]internal.APIRoute {
 	return &[]internal.APIRoute{
 		{"/admin/login", internal.POST, m.login},
-		{"/admin/createUser", internal.POST, m.createUser},
+		{"/admin/User", internal.POST, m.createUser},
 		{"/admin/logout", internal.POST, m.logout},
 	}
 }
@@ -164,7 +164,5 @@ func (s *AuthenticationManager) logout(c *fiber.Ctx) error {
 	resp := fiber.Map{
 		"message": "logout successfully",
 	}
-
 	return c.JSON(resp)
-
 }
