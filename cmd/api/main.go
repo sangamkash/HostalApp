@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	_ "HostelApp/docs"
 	_ "github.com/joho/godotenv/autoload"
 )
 
@@ -39,6 +40,9 @@ func gracefulShutdown(fiberServer *server.FiberServer, done chan bool) {
 	done <- true
 }
 
+// @title       HostelApp
+// @version     1.0
+// @description API for hostel management system
 func main() {
 
 	server := server.New()

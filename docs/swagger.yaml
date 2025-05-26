@@ -1,0 +1,129 @@
+basePath: /api/v1
+definitions:
+  Admin.AdminLogin:
+    properties:
+      password:
+        maxLength: 64
+        minLength: 8
+        type: string
+      username:
+        maxLength: 20
+        minLength: 3
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  Admin.AdminUserDetail:
+    properties:
+      email:
+        type: string
+      excess_level:
+        $ref: '#/definitions/Admin.ExcessType'
+      password:
+        maxLength: 64
+        minLength: 8
+        type: string
+      refresh_token:
+        type: string
+      username:
+        maxLength: 20
+        minLength: 3
+        type: string
+    required:
+    - email
+    - excess_level
+    - password
+    - username
+    type: object
+  Admin.ExcessType:
+    enum:
+    - 0
+    - 1
+    - 2
+    type: integer
+    x-enum-varnames:
+    - Full
+    - ReadOnly
+    - ReadAndWrite
+host: localhost:8080
+info:
+  contact: {}
+  description: API description...
+  title: Your API Title
+  version: "1.0"
+paths:
+  /admin/User:
+    post:
+      consumes:
+      - application/json
+      description: Create a new admin user (requires authentication)
+      parameters:
+      - description: Bearer JWT token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: User details
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/Admin.AdminUserDetail'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Create admin user
+      tags:
+      - admin
+  /admin/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate admin user
+      parameters:
+      - description: Admin credentials
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/Admin.AdminLogin'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Returns JWT token
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Admin login
+      tags:
+      - admin
+swagger: "2.0"

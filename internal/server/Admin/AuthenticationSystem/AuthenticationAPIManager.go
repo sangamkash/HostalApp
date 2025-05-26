@@ -30,6 +30,16 @@ func NewAuthenticationManager(dbManager *AdminDB.LoginDBManager, jwtManager *JWT
 	return instance
 }
 
+// @Summary Admin login
+// @Description Authenticate admin user
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Param credentials body Admin.AdminLogin true "Admin credentials"
+// @Success 200 {object} map[string]interface{} "Returns JWT token"
+// @Failure 400 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /admin/login [post]
 func (s *AuthenticationManager) login(c *fiber.Ctx) error {
 	var user Admin.AdminLogin
 	//Parsing data to user
@@ -92,6 +102,19 @@ func (s *AuthenticationManager) login(c *fiber.Ctx) error {
 		return c.JSON(resp)
 	}
 }
+
+// @Summary Create admin user
+// @Description Create a new admin user (requires authentication)
+// @Tags admin
+// @Security ApiKeyAuth
+// @Accept json
+// @Produce json
+// @Param Authorization header string true "Bearer JWT token"
+// @Param user body Admin.AdminUserDetail true "User details"
+// @Success 201 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Router /admin/User [post]
 func (s *AuthenticationManager) createUser(c *fiber.Ctx) error {
 	var user Admin.AdminUserDetail
 	authHeader := c.Get("Authorization")
@@ -101,18 +124,19 @@ func (s *AuthenticationManager) createUser(c *fiber.Ctx) error {
 			"error":   jwtErr.Error(),
 		})
 	}
+
+	if err := c.BodyParser(&user); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "cannot parse JSON",
+		})
+	}
+
 	if err := ValidatorSystem.GetValidator().IsValid(&user); err != nil {
 		resp := fiber.Map{
 			"message": "failed to validate credentials at validator",
 			"error":   err.Error(),
 		}
 		return c.Status(fiber.StatusBadRequest).JSON(resp)
-	}
-
-	if err := c.BodyParser(&user); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "cannot parse JSON",
-		})
 	}
 	if err := s.dbManager.UserCreate(&user, c.Context()); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -127,8 +151,18 @@ func (s *AuthenticationManager) createUser(c *fiber.Ctx) error {
 
 }
 
+// @Summary Logout admin user
+// @Description this is for logout (requires authentication)
+// @Tags admin
+// @Security ApiKeyAuth
+// @Accept json
+// @Produce json
+// @Param Authorization header string true "Bearer JWT token"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Router /admin/logout [post]
 func (s *AuthenticationManager) logout(c *fiber.Ctx) error {
-	var user Admin.AdminUserDetail
 	authHeader := c.Get("Authorization")
 	_id := ""
 	if jwtMap, jwtErr := s.jwtManager.IsValid(authHeader); jwtErr != nil {
@@ -139,19 +173,7 @@ func (s *AuthenticationManager) logout(c *fiber.Ctx) error {
 	} else {
 		_id = jwtMap["_id"].(string)
 	}
-	if err := ValidatorSystem.GetValidator().IsValid(&user); err != nil {
-		resp := fiber.Map{
-			"message": "failed to validate credentials at validator",
-			"error":   err.Error(),
-		}
-		return c.Status(fiber.StatusBadRequest).JSON(resp)
-	}
 
-	if err := c.BodyParser(&user); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "cannot parse JSON",
-		})
-	}
 	//Updating new Refresh token to DB
 	if dBJwtWriteErr := s.dbManager.UpdateRefreshToken(_id, "", c.Context()); dBJwtWriteErr != nil {
 		resp := fiber.Map{

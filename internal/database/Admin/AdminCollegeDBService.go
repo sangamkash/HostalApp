@@ -60,6 +60,9 @@ func (m *CollegeDBManager) createIndexes() error {
 	return nil
 }
 
+func (m *CollegeDBManager) addDefaultData() {
+
+}
 func (m *CollegeDBManager) AddCollege(data Admin.CollegeData, ctx context.Context) error {
 
 	filter := bson.M{"collage_unique_name": data.CollageUniqueName}

@@ -5,6 +5,7 @@ import (
 	"HostelApp/internal"
 	"context"
 	"fmt"
+	"github.com/gofiber/swagger"
 	"log"
 	"log/slog"
 	"time"
@@ -30,7 +31,9 @@ func (s *FiberServer) registerDefaultFiberRoutes() {
 	s.App.Get("/health", s.healthHandler)
 
 	s.App.Get("/websocket", websocket.New(s.websocketHandler))
-
+	s.App.Get("/swagger/*", swagger.New(swagger.Config{
+		Title: "Hostel API",
+	}))
 }
 
 func (s *FiberServer) RegisterFiberRoutes(apiService internal.IAPIService) {

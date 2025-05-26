@@ -32,6 +32,11 @@ docker-down:
 		docker-compose down; \
 	fi
 
+# Make swagger documentation
+document_api:
+	@echo "Generating Swagger docs..."
+	@swag init -g cmd/api/main.go
+
 # Test the application
 test:
 	@echo "Testing..."

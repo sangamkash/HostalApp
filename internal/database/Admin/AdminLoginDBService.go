@@ -34,6 +34,7 @@ func NewLoginDBManager(client *mongo.Client) *LoginDBManager {
 func (m *LoginDBManager) init() {
 	m.userCollection = m.client.Database("admindb").Collection("adminUsers")
 	err := m.createIndexes()
+	m.addDefaultData()
 	if err != nil {
 		log.Panicf("!!!panic %v", err)
 	}
@@ -43,7 +44,7 @@ func (m *LoginDBManager) createIndexes() error {
 	// Unique indexes for fields that must be unique
 	indexModels := []mongo.IndexModel{
 		{
-			Keys:    bson.D{{Key: "email", Value: "hashed"}},
+			Keys:    bson.D{{Key: "email", Value: 1}},
 			Options: options.Index().SetUnique(true),
 		},
 		{
@@ -64,9 +65,25 @@ func (m *LoginDBManager) createIndexes() error {
 	return nil
 }
 
-// IsValidCredentials checks if the provided admin credentials are valid.
-// It queries the MongoDB collection for a matching username and password.
-// Returns nil if credentials are valid, otherwise returns an error.
+func (m *LoginDBManager) addDefaultData() {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	err := m.userCollection.FindOne(ctx, bson.M{"username": "admin"}).Err()
+	if err != nil {
+		slog.Info(LogColor.Pink(fmt.Sprintf("failed to find admin login database error: %v", err)))
+		admin := &Admin.AdminUserDetail{
+			Username:     "admin",
+			Password:     "password@123",
+			Email:        "admin@admin.com",
+			ExcessLevel:  Admin.Full,
+			RefreshToken: "",
+		}
+		insertErr := m.UserCreate(admin, ctx)
+		if insertErr != nil {
+			log.Panicf(LogColor.Red(fmt.Sprintf("failed to insert admin user insert error: %v", insertErr)))
+		}
+	}
+}
 func (m *LoginDBManager) IsValidCredentials(credentials *Admin.AdminLogin, ctx context.Context) (*string, error) {
 	var result bson.M
 
@@ -147,6 +164,7 @@ func (m *LoginDBManager) UserCreate(userDetail *Admin.AdminUserDetail, ctx conte
 		"password":     string(hashedPassword),
 		"email":        userDetail.Email,
 		"created":      time.Now(),
+		"excess_level": userDetail.ExcessLevel,
 		"refreshToken": userDetail.RefreshToken,
 	}
 
