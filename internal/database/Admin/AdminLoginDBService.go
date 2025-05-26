@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/crypto/bcrypt"
@@ -42,7 +43,7 @@ func (m *LoginDBManager) createIndexes() error {
 	// Unique indexes for fields that must be unique
 	indexModels := []mongo.IndexModel{
 		{
-			Keys:    bson.D{{Key: "email", Value: 1}},
+			Keys:    bson.D{{Key: "email", Value: "hashed"}},
 			Options: options.Index().SetUnique(true),
 		},
 		{
@@ -66,25 +67,54 @@ func (m *LoginDBManager) createIndexes() error {
 // IsValidCredentials checks if the provided admin credentials are valid.
 // It queries the MongoDB collection for a matching username and password.
 // Returns nil if credentials are valid, otherwise returns an error.
-func (m *LoginDBManager) IsValidCredentials(credentials *Admin.AdminLogin, ctx context.Context) error {
+func (m *LoginDBManager) IsValidCredentials(credentials *Admin.AdminLogin, ctx context.Context) (*string, error) {
 	var result bson.M
 
 	// Find user by username
 	err := m.userCollection.FindOne(ctx, bson.M{"username": credentials.Username}).Decode(&result)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
-			return fmt.Errorf("user not found") // user not found
+			return nil, fmt.Errorf("user not found") // user not found
 		}
-		return fmt.Errorf("internal error: %v", err) // some other DB error
+		return nil, fmt.Errorf("internal error: %v", err) // some other DB error
 	}
 
 	// Compare passwords (NOTE: consider using hashed passwords in production)
 	err = bcrypt.CompareHashAndPassword([]byte(result["password"].(string)), []byte(credentials.Password))
 	if err != nil {
-		return fmt.Errorf("password mismatch")
+		return nil, fmt.Errorf("password mismatch")
+	}
+	// Get and return _id as string
+	objectID, ok := result["_id"].(primitive.ObjectID)
+	if !ok {
+		return nil, fmt.Errorf("invalid _id format")
+	}
+	idStr := objectID.Hex()
+
+	return &idStr, nil // success
+}
+func (m *LoginDBManager) UpdateRefreshToken(_id string, refreshToken string, ctx context.Context) error {
+	// Convert string ID to ObjectID
+	objectID, err := primitive.ObjectIDFromHex(_id)
+	if err != nil {
+		return fmt.Errorf("invalid user ID: %v", err)
 	}
 
-	return nil // success
+	//update refresh token for the user
+	update := bson.M{
+		"$set": bson.M{
+			"refresh_token": refreshToken,
+		},
+	}
+	result, err := m.userCollection.UpdateByID(ctx, objectID, update)
+	if err != nil {
+		return fmt.Errorf("failed to update refresh token: %v", err)
+	}
+
+	if result.MatchedCount == 0 {
+		return fmt.Errorf("user not found")
+	}
+	return nil
 }
 
 func (m *LoginDBManager) UserExit(userDetail *Admin.AdminUserDetail, ctx context.Context) (bool, error) {
@@ -105,6 +135,28 @@ func (m *LoginDBManager) UserExit(userDetail *Admin.AdminUserDetail, ctx context
 }
 
 func (m *LoginDBManager) UserCreate(userDetail *Admin.AdminUserDetail, ctx context.Context) error {
+	// Hash password (never store plain text passwords)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(userDetail.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("false to hash password error: %v", err)
+	}
+
+	// Insert new user
+	newUser := bson.M{
+		"username":     userDetail.Username,
+		"password":     string(hashedPassword),
+		"email":        userDetail.Email,
+		"created":      time.Now(),
+		"refreshToken": userDetail.RefreshToken,
+	}
+
+	if _, err = m.userCollection.InsertOne(ctx, newUser); err != nil {
+		return fmt.Errorf("false to hash password error: %v", err)
+	}
+	return nil
+}
+
+func (m *LoginDBManager) logoutUser(userDetail *Admin.AdminUserDetail, ctx context.Context) error {
 	// Hash password (never store plain text passwords)
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(userDetail.Password), bcrypt.DefaultCost)
 	if err != nil {

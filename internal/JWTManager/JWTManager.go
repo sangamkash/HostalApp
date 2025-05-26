@@ -8,20 +8,38 @@ import (
 )
 
 type JWTManager struct {
-	signingKey []byte
-	duration   int64 // JWT token exp time in min
+	signingKey           []byte
+	duration             int64 // JWT token exp time in min
+	refreshTokenDuration int64 // JWT token exp time in days
 }
 
 // NewJWTManager take key and duration in min
-func NewJWTManager(jwtKey string, duration int64) *JWTManager {
+func NewJWTManager(jwtKey string, duration int64, refreshTokenDuration int64) *JWTManager {
 	return &JWTManager{
-		signingKey: []byte(jwtKey),
-		duration:   duration,
+		signingKey:           []byte(jwtKey),
+		duration:             duration,
+		refreshTokenDuration: refreshTokenDuration,
 	}
 }
 
 func (m *JWTManager) GenerateToken(userData string) (string, error) {
 	expirationTime := time.Now().Add(time.Duration(m.duration) * time.Minute)
+
+	claims := jwt.MapClaims{
+		"userData": userData,
+		"exp":      expirationTime.Unix(), // exp must be a Unix timestamp
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString(m.signingKey)
+	if err != nil {
+		return "", err
+	}
+	return tokenString, nil
+}
+
+func (m *JWTManager) GenerateRefreshToken(userData string) (string, error) {
+	expirationTime := time.Now().Add(time.Duration(m.refreshTokenDuration*24) * time.Hour)
 
 	claims := jwt.MapClaims{
 		"userData": userData,

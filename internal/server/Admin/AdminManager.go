@@ -16,7 +16,7 @@ func (a AdminManager) GetFiberRoutes() *[]internal.APIRoute {
 }
 
 func NewAdminManager(adminDb *Admin.DbManager) *AdminManager {
-	jwtManager := JWTManager.NewJWTManager("", 30)
+	jwtManager := JWTManager.NewJWTManager("", 30, 30)
 	return &AdminManager{
 		auth: AuthenticationSystem.NewAuthenticationManager(adminDb.LoginDB, jwtManager),
 	}
