@@ -107,14 +107,14 @@ func (m *CollegeManager) AddCollege(c *fiber.Ctx) error {
 			"error":   jwtErr.Error(),
 		})
 	}
-	var colleges *[]Admin.CollegeData
-	if err := c.BodyParser(colleges); err != nil {
+	var colleges []Admin.CollegeData
+	if err := c.BodyParser(&colleges); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"message": "failed to parse colleges",
 			"error":   err.Error(),
 		})
 	}
-	if addedColleges, err := m.dbManager.AddCollege(colleges, c.Context()); err != nil {
+	if addedColleges, err := m.dbManager.AddCollege(&colleges, c.Context()); err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"message": "failed to validate credentials at jwt",
 			"error":   err.Error(),
