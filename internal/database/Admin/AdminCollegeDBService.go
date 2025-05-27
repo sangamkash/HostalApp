@@ -64,55 +64,24 @@ func (m *CollegeDBManager) addDefaultData() {
 }
 func (m *CollegeDBManager) AddCollege(colleges *[]Admin.CollegeData, ctx context.Context) ([]Admin.CollegeNameData, error) {
 	var addedColleges []Admin.CollegeNameData
-
-	// Start session
-	session, sessionErr := m.collegeCollection.Database().Client().StartSession()
-	if sessionErr != nil {
-		return nil, fmt.Errorf("failed to start session: %v", sessionErr)
-	}
-	defer session.EndSession(ctx)
-
-	// Run transaction
-	startSessionErr := mongo.WithSession(ctx, session, func(sc mongo.SessionContext) error {
-		// Start the transaction
-		if err := session.StartTransaction(); err != nil {
-			return fmt.Errorf("failed to start transaction: %v", err)
+	for _, college := range *colleges {
+		// Set default value if not explicitly set
+		if !college.MarkAsDeleted {
+			college.MarkAsDeleted = false
 		}
 
-		for _, college := range *colleges {
-			// Check if CollageUniqueName already exists
-			count, err := m.collegeCollection.CountDocuments(sc, bson.M{
-				"collage_unique_name": college.CollageUniqueName,
-				"mark_as_deleted":     false,
-			})
-			if err != nil {
-				return fmt.Errorf("error checking uniqueness for %s: %v", college.CollageUniqueName, err)
+		// Insert the document (MongoDB will enforce uniqueness)
+		_, err := m.collegeCollection.InsertOne(ctx, college)
+		if err != nil {
+			if mongo.IsDuplicateKeyError(err) {
+				return nil, fmt.Errorf("college with unique name '%s' already exists", college.CollageUniqueName)
 			}
-			if count > 0 {
-				return fmt.Errorf("college with unique name %s already exists", college.CollageUniqueName)
-			}
-
-			// Set default value if not explicitly set
-			if !college.MarkAsDeleted {
-				college.MarkAsDeleted = false
-			}
-
-			// Insert the document
-			if _, insertErr := m.collegeCollection.InsertOne(sc, college); insertErr != nil {
-				return fmt.Errorf("failed to insert college %s: %v", college.CollageUniqueName, insertErr)
-			}
-
-			addedColleges = append(addedColleges, Admin.CollegeNameData{
-				CollageUniqueName: college.CollageUniqueName,
-			})
+			return nil, fmt.Errorf("failed to insert college '%s': %v", college.CollageUniqueName, err)
 		}
 
-		// Commit the transaction
-		return session.CommitTransaction(sc)
-	})
-
-	if startSessionErr != nil {
-		return nil, startSessionErr
+		addedColleges = append(addedColleges, Admin.CollegeNameData{
+			CollageUniqueName: college.CollageUniqueName,
+		})
 	}
 
 	return addedColleges, nil
