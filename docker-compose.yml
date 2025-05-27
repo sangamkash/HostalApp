@@ -33,6 +33,8 @@ services:
       - blueprint
   mongo_bp:
     image: mongo:latest
+    # this is to only show error logs
+    command: mongod --quiet
     #restart: unless-stopped
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${BLUEPRINT_DB_USERNAME}

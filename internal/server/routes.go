@@ -33,7 +33,16 @@ func (s *FiberServer) registerDefaultFiberRoutes() {
 	s.App.Get("/websocket", websocket.New(s.websocketHandler))
 	s.App.Get("/swagger/*", swagger.New(swagger.Config{
 		Title: "Hostel API",
+		// Prefill OAuth ClientId on Authorize popup
+		OAuth: &swagger.OAuthConfig{
+			AppName:  "OAuth Provider",
+			ClientId: "21bb4edc-05a7-4afc-86f1-2e151e4ba6e2",
+		},
+		// Ability to change OAuth2 redirect uri location
+		OAuth2RedirectUrl: "http://localhost:8080/swagger/oauth2-redirect.html",
 	}))
+	slog.Info(LogColor.Orange("==Check Swagger UI for API documentation=="))
+	slog.Info(LogColor.Green("http://127.0.0.1:3000/swagger/index.html"))
 }
 
 func (s *FiberServer) RegisterFiberRoutes(apiService internal.IAPIService) {

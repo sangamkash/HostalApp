@@ -10,11 +10,13 @@ type CollegeData struct {
 	MarkAsDeleted     bool   `json:"mark_as_deleted" bson:"mark_as_deleted" default:"false"`
 }
 
-type DelCollegeData struct {
+type CollegeNameData struct {
 	CollageUniqueName string `json:"collage_unique_name" bson:"collage_unique_name" validate:"required,min=3,max=20"`
 }
 
-type GetCollegeFilter struct {
+type CollegeFilter struct {
+	Page          int64  `json:"page" bson:"page" validate:"required,min=1"`
+	Limit         int64  `json:"limit" bson:"limit" validate:"required,min=1,max=20"`
 	PinCode       string `json:"pin_code" bson:"pin_code"`
 	MarkAsDeleted bool   `json:"mark_as_deleted" bson:"mark_as_deleted" default:"false"`
 }

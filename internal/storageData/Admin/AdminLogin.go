@@ -3,7 +3,7 @@ package Admin
 type ExcessType int
 
 const (
-	Full ExcessType = iota
+	Full ExcessType = iota + 1
 	ReadOnly
 	ReadAndWrite
 )
@@ -12,7 +12,7 @@ type AdminUserDetail struct {
 	Username     string     `json:"username" bson:"username" validate:"required,min=3,max=20"`
 	Email        string     `json:"email" bson:"email" validate:"required,email"`
 	Password     string     `json:"password" bson:"password" validate:"required,min=8,max=64"`
-	ExcessLevel  ExcessType `json:"excess_level" bson:"excess_level" validate:"required"`
+	ExcessLevel  ExcessType `json:"excess_level" bson:"excess_level" validate:"required,oneof=0 1 2"`
 	RefreshToken string     `json:"refresh_token" bson:"refresh_token"`
 }
 

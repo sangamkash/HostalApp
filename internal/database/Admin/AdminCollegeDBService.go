@@ -5,9 +5,8 @@ import (
 	"HostelApp/LogHelper"
 	"HostelApp/internal/storageData/Admin"
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
+	"github.com/go-playground/validator/v10"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -63,26 +62,70 @@ func (m *CollegeDBManager) createIndexes() error {
 func (m *CollegeDBManager) addDefaultData() {
 
 }
-func (m *CollegeDBManager) AddCollege(data Admin.CollegeData, ctx context.Context) error {
+func (m *CollegeDBManager) AddCollege(colleges *[]Admin.CollegeData, ctx context.Context) ([]Admin.CollegeNameData, error) {
+	var addedColleges []Admin.CollegeNameData
 
-	filter := bson.M{"collage_unique_name": data.CollageUniqueName}
-	err := m.collegeCollection.FindOne(ctx, filter).Err()
-	if err == nil {
-		return fmt.Errorf("collage already exists")
+	// Start session
+	session, sessionErr := m.collegeCollection.Database().Client().StartSession()
+	if sessionErr != nil {
+		return nil, fmt.Errorf("failed to start session: %v", sessionErr)
 	}
-	if errors.Is(err, mongo.ErrNoDocuments) {
-		// collage does not exist
-		_, insertErr := m.collegeCollection.InsertOne(ctx, data)
-		if insertErr != nil {
-			return insertErr
+	defer session.EndSession(ctx)
+
+	// Run transaction
+	startSessionErr := mongo.WithSession(ctx, session, func(sc mongo.SessionContext) error {
+		// Start the transaction
+		if err := session.StartTransaction(); err != nil {
+			return fmt.Errorf("failed to start transaction: %v", err)
 		}
-		return nil
+
+		for _, college := range *colleges {
+			// Check if CollageUniqueName already exists
+			count, err := m.collegeCollection.CountDocuments(sc, bson.M{
+				"collage_unique_name": college.CollageUniqueName,
+				"mark_as_deleted":     false,
+			})
+			if err != nil {
+				return fmt.Errorf("error checking uniqueness for %s: %v", college.CollageUniqueName, err)
+			}
+			if count > 0 {
+				return fmt.Errorf("college with unique name %s already exists", college.CollageUniqueName)
+			}
+
+			// Set default value if not explicitly set
+			if !college.MarkAsDeleted {
+				college.MarkAsDeleted = false
+			}
+
+			// Insert the document
+			if _, insertErr := m.collegeCollection.InsertOne(sc, college); insertErr != nil {
+				return fmt.Errorf("failed to insert college %s: %v", college.CollageUniqueName, insertErr)
+			}
+
+			addedColleges = append(addedColleges, Admin.CollegeNameData{
+				CollageUniqueName: college.CollageUniqueName,
+			})
+		}
+
+		// Commit the transaction
+		return session.CommitTransaction(sc)
+	})
+
+	if startSessionErr != nil {
+		return nil, startSessionErr
 	}
-	return err // some other error
+
+	return addedColleges, nil
 }
 
-func (m *CollegeDBManager) UpdateCollage(data *Admin.CollegeData, ctx context.Context) error {
-	result, err := m.collegeCollection.UpdateOne(ctx, bson.M{"collage_unique_name": data.CollageUniqueName}, data)
+// Helper function to validate college data
+func validateCollegeData(college *Admin.CollegeData) error {
+	validate := validator.New()
+	return validate.Struct(college)
+}
+
+func (m *CollegeDBManager) UpdateCollage(college *Admin.CollegeData, ctx context.Context) error {
+	result, err := m.collegeCollection.UpdateOne(ctx, bson.M{"collage_unique_name": college.CollageUniqueName}, college)
 	if err != nil {
 		return err
 	}
@@ -92,7 +135,7 @@ func (m *CollegeDBManager) UpdateCollage(data *Admin.CollegeData, ctx context.Co
 	return nil
 }
 
-func (m *CollegeDBManager) DeleteCollage(data *Admin.DelCollegeData, ctx context.Context) error {
+func (m *CollegeDBManager) DeleteCollage(data *Admin.CollegeNameData, ctx context.Context) error {
 	filter := bson.M{"collage_unique_name": data.CollageUniqueName}
 	update := bson.M{"$set": bson.M{"mark_as_deleted": true}}
 
@@ -106,33 +149,39 @@ func (m *CollegeDBManager) DeleteCollage(data *Admin.DelCollegeData, ctx context
 	return nil
 }
 
-func (m *CollegeDBManager) GetCollege(data *Admin.GetCollegeFilter, ctx context.Context) (string, error) {
-	// Initialize empty slice (not nil) to ensure JSON marshals as [] instead of null
-	colleges := make([]Admin.CollegeData, 0)
+func (m *CollegeDBManager) FetchCollege(filter *Admin.CollegeFilter, ctx context.Context) ([]Admin.CollegeData, error) {
+	// Convert Page and Limit
+	page := filter.Page
+	if page < 1 {
+		page = 1
+	}
 
-	// Find all non-deleted colleges
-	cursor, err := m.collegeCollection.Find(ctx, bson.M{"mark_as_deleted": false})
+	limit := filter.Limit
+	if limit < 1 || limit > 20 {
+		limit = 10
+	}
+
+	skip := (page - 1) * limit
+
+	// Build MongoDB filter
+	query := bson.M{}
+	if filter.PinCode != "" {
+		query["pin_code"] = filter.PinCode
+	}
+	query["mark_as_deleted"] = filter.MarkAsDeleted
+
+	// MongoDB find options
+	opts := options.Find().
+		SetLimit(limit).
+		SetSkip(skip)
+	cursor, err := m.collegeCollection.Find(ctx, query, opts)
+	defer cursor.Close(ctx)
 	if err != nil {
-		return "", fmt.Errorf("failed to query colleges: %w", err)
+		return nil, err
 	}
-
-	// Proper defer block with error handling for cursor.Close
-	defer func() {
-		if cerr := cursor.Close(ctx); cerr != nil {
-			slog.Warn(fmt.Sprintf("Warning: failed to close MongoDB cursor: %v", cerr))
-		}
-	}()
-
-	// Decode all results at once (more efficient than one-by-one)
-	if err := cursor.All(ctx, &colleges); err != nil {
-		return "", fmt.Errorf("failed to decode college data: %w", err)
+	var colleges []Admin.CollegeData
+	if err = cursor.All(ctx, &colleges); err != nil {
+		return nil, err
 	}
-
-	// Marshal to JSON
-	jsonData, err := json.Marshal(colleges)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal college data: %w", err)
-	}
-
-	return string(jsonData), nil
+	return colleges, nil
 }
