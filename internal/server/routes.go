@@ -5,10 +5,11 @@ import (
 	"HostelApp/internal"
 	"context"
 	"fmt"
-	"github.com/gofiber/swagger"
 	"log"
 	"log/slog"
 	"time"
+
+	"github.com/gofiber/swagger"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -48,34 +49,42 @@ func (s *FiberServer) registerDefaultFiberRoutes() {
 func (s *FiberServer) RegisterFiberRoutes(apiService internal.IAPIService) {
 	apiRoute := apiService.GetFiberRoutes()
 	for _, route := range *apiRoute {
-		slog.Info(LogColor.Orange(route.Method.String()) + ":" + LogColor.Pink(route.Path))
 		switch route.Method {
 		case internal.GET:
 			s.App.Get(route.Path, route.Handler)
+			slog.Info(LogColor.BrightGreen(route.Method.String()) + ":" + LogColor.Pink(route.Path))
 			break
 		case internal.POST:
 			s.App.Post(route.Path, route.Handler)
+			slog.Info(LogColor.BrightCyan(route.Method.String()) + ":" + LogColor.Pink(route.Path))
 			break
 		case internal.PUT:
 			s.App.Put(route.Path, route.Handler)
+			slog.Info(LogColor.BrightBlue(route.Method.String()) + ":" + LogColor.Pink(route.Path))
 			break
 		case internal.PATCH:
 			s.App.Patch(route.Path, route.Handler)
+			slog.Info(LogColor.BrightMagenta(route.Method.String()) + ":" + LogColor.Pink(route.Path))
 			break
 		case internal.DELETE:
 			s.App.Delete(route.Path)
+			slog.Info(LogColor.BrightRed(route.Method.String()) + ":" + LogColor.Pink(route.Path))
 			break
 		case internal.HEAD:
 			s.App.Head(route.Path, route.Handler)
+			slog.Info(LogColor.Orange(route.Method.String()) + ":" + LogColor.Pink(route.Path))
 			break
 		case internal.OPTIONS:
 			s.App.Options(route.Path, route.Handler)
+			slog.Info(LogColor.BrightYellow(route.Method.String()) + ":" + LogColor.Pink(route.Path))
 			break
 		case internal.TRACE:
 			s.App.Trace(route.Path, route.Handler)
+			slog.Info(LogColor.Peach(route.Method.String()) + ":" + LogColor.Pink(route.Path))
 			break
 		case internal.CONNECT:
 			s.App.Connect(route.Path, route.Handler)
+			slog.Info(LogColor.Violet(route.Method.String()) + ":" + LogColor.Pink(route.Path))
 			break
 
 		}

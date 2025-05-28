@@ -6,13 +6,14 @@ import (
 	"HostelApp/internal/storageData/Admin"
 	"context"
 	"fmt"
+	"log"
+	"log/slog"
+	"time"
+
 	"github.com/go-playground/validator/v10"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"log"
-	"log/slog"
-	"time"
 )
 
 type CollegeDBManager struct {
@@ -36,6 +37,7 @@ func (m *CollegeDBManager) init() {
 	if err != nil {
 		log.Panicf("!!!panic %v", err)
 	}
+	m.addDefaultData()
 }
 
 func (m *CollegeDBManager) createIndexes() error {
@@ -60,8 +62,15 @@ func (m *CollegeDBManager) createIndexes() error {
 }
 
 func (m *CollegeDBManager) addDefaultData() {
-
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	count, err := m.collegeCollection.CountDocuments(ctx, bson.M{})
+	if err != nil {
+		slog.Warn("error failed to count documents: %v", err)
+	}
+	slog.Warn(LogColor.Teal(fmt.Sprintf(">>>>Total number of documents: %v", count)))
 }
+
 func (m *CollegeDBManager) AddCollege(colleges *[]Admin.CollegeData, ctx context.Context) ([]Admin.CollegeNameData, error) {
 	var addedColleges []Admin.CollegeNameData
 	for _, college := range *colleges {
